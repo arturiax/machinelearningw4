@@ -127,7 +127,10 @@ $(document).ready(function () {
 <pre><code>## Loading required package: lattice</code></pre>
 <pre><code>## Loading required package: ggplot2</code></pre>
 <pre class="r"><code>library(parallel)
-library(dplyr)</code></pre>
+library(doParallel)</code></pre>
+<pre><code>## Loading required package: foreach</code></pre>
+<pre><code>## Loading required package: iterators</code></pre>
+<pre class="r"><code>library(dplyr)</code></pre>
 <pre><code>## 
 ## Attaching package: 'dplyr'</code></pre>
 <pre><code>## The following objects are masked from 'package:stats':
@@ -220,11 +223,68 @@ sum(complete.cases(train))</code></pre>
 <pre class="r"><code>final &lt;- 
   train[, number_missings == 0] %&gt;% 
   select(-c(1, 3, 4, 5, 6)) %&gt;% 
-  sample_n(1000, FALSE)</code></pre>
+  sample_n(1000, FALSE)
+
+
+finaltest &lt;- 
+  test[, number_missings == 0] %&gt;% 
+  select(-c(1, 3, 4, 5, 6))</code></pre>
 <pre class="r"><code>set.seed(123)
-#inTrain = createDataPartition(y=dataTrain$classe, p = 0.6,list=FALSE)
-#training = dataTrain[inTrain,]
-#testing = dataTrain[-inTrain,]</code></pre>
+inTrain = createDataPartition(y=final$classe, p = 0.6,list=FALSE)
+training = final[inTrain,]
+testing = final[-inTrain,]</code></pre>
+<pre class="r"><code>cluster &lt;- makeCluster(detectCores()) # convention to leave 1 core for OS
+registerDoParallel(cluster)</code></pre>
+<pre class="r"><code>ctrl &lt;- trainControl(method=&quot;repeatedcv&quot;, number=10, repeats=5)
+system.time(model &lt;- train(classe ~ ., data=training, method=&quot;rf&quot;, trControl = ctrl))</code></pre>
+<pre><code>## Loading required package: randomForest</code></pre>
+<pre><code>## randomForest 4.6-12</code></pre>
+<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre><code>## 
+## Attaching package: 'randomForest'</code></pre>
+<pre><code>## The following object is masked from 'package:dplyr':
+## 
+##     combine</code></pre>
+<pre><code>## The following object is masked from 'package:ggplot2':
+## 
+##     margin</code></pre>
+<pre><code>##    user  system elapsed 
+## 197.456   0.052 197.741</code></pre>
+<pre class="r"><code>modelError &lt;- confusionMatrix(predict(model, newdata=testing), testing$classe)
+modelError</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction  A  B  C  D  E
+##          A 97  7  1  0  1
+##          B  2 51  8  1  3
+##          C  0 12 65  5  1
+##          D  6  4  0 52  0
+##          E  0  2  0  4 77
+## 
+## Overall Statistics
+##                                         
+##                Accuracy : 0.8571        
+##                  95% CI : (0.8189, 0.89)
+##     No Information Rate : 0.2632        
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16     
+##                                         
+##                   Kappa : 0.82          
+##  Mcnemar's Test P-Value : 0.008804      
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9238   0.6711   0.8784   0.8387   0.9390
+## Specificity            0.9694   0.9567   0.9446   0.9703   0.9811
+## Pos Pred Value         0.9151   0.7846   0.7831   0.8387   0.9277
+## Neg Pred Value         0.9727   0.9251   0.9715   0.9703   0.9842
+## Prevalence             0.2632   0.1905   0.1855   0.1554   0.2055
+## Detection Rate         0.2431   0.1278   0.1629   0.1303   0.1930
+## Detection Prevalence   0.2657   0.1629   0.2080   0.1554   0.2080
+## Balanced Accuracy      0.9466   0.8139   0.9115   0.9045   0.9600</code></pre>
+<pre class="r"><code>stopCluster(cluster)
+registerDoSEQ() </code></pre>
 
 
 
